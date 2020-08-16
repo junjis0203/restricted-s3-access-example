@@ -1,0 +1,84 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <div id="app">
+        </div>
+
+        <script src="https://sdk.amazonaws.com/js/aws-sdk-2.734.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@4.3.3/dist/amazon-cognito-identity.min.js"></script>
+        <script src="config.js"></script>
+        <script src="common.js"></script>
+        <script>
+            const cognitoUser = userPool.getCurrentUser();
+            if (!cognitoUser) {
+                document.location.href = 'signin.html'
+            }
+
+            cognitoUser.getSession(function(err, result) {
+                if (err) {
+                    console.error(err);
+                    return
+                }
+
+                AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+                    IdentityPoolId: IDENTITY_POOL_ID,
+                    Logins: {
+                        [LOGINS_KEY]: result.getIdToken().getJwtToken()
+                    },
+                })
+                AWS.config.credentials.refresh(function(err) {
+                    if (err) {
+                        console.error(error)
+                        return
+                    }
+
+                    console.log('Refreshing AWS credentials is succeed')
+                    getImages()
+                })
+            })
+
+            const s3 = new AWS.S3()
+            function getImages() {
+                s3.listObjects({Bucket: S3_BUCKET}, function(err, data) {
+                    if (err) {
+                        console.error(err)
+                        return
+                    }
+
+                    const ul = document.createElement('ul')
+                    data.Contents.forEach(function(content) {
+                        if (content.Key.endsWith('.jpg')) {
+                            const li = document.createElement('li')
+                            const a = document.createElement('a')
+                            const br = document.createElement('br')
+                            const img = document.createElement('img')
+                            a.href = '#'
+                            a.innerHTML = content.Key
+                            a.addEventListener('click', function(e) {
+                                e.preventDefault()
+
+                                s3.getObject({Bucket: S3_BUCKET, Key: content.Key}, function(err, data) {
+                                    if (err) {
+                                        console.error(err)
+                                        return
+                                    }
+
+                                    console.log(data)
+                                    const blob = new Blob([data.Body], {type: data.ContentType})
+                                    img.src = URL.createObjectURL(blob)
+                                })
+                            })
+                            li.appendChild(a)
+                            li.appendChild(br)
+                            li.appendChild(img)
+                            ul.appendChild(li)
+                        }
+                    })
+                    const app = document.getElementById('app')
+                    app.appendChild(ul)
+                })
+            }
+        </script>
+    </body>
+</html>

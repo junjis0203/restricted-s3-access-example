@@ -1,0 +1,94 @@
+<html>
+    <head>
+    </head>
+    <body>
+        <form id="sign_in_form">
+            <div>
+                <label for="email">Email</label>
+                <input type="email" name="email" id="email" size="20" required>
+            </div>
+            <div>
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" required>
+            </div>
+            <div>
+                <input type="submit" value="sign in">
+            </div>
+        </form>
+        <form id="change_password_form" style="display: none;">
+            <p>
+                Need to change password
+            </p>
+            <div>
+                <label for="new_password">New Password</label>
+                <input type="password" name="new_password" id="new_password" required>
+            </div>
+            <div>
+                <input type="submit" value="change password">
+            </div>
+        </form>
+        <script src="https://sdk.amazonaws.com/js/aws-sdk-2.734.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@4.3.3/dist/amazon-cognito-identity.min.js"></script>
+        <script src="config.js"></script>
+        <script src="common.js"></script>
+        <script>
+            let cognitoUser, sessionUserAttributes
+
+            const signInform = document.getElementById('sign_in_form')
+            const changePasswordForm = document.getElementById('change_password_form')
+
+            signInform.addEventListener('submit', function(e) {
+                e.preventDefault()
+
+                const email = document.getElementById('email').value
+                const password = document.getElementById('password').value
+                console.log(email, password)
+
+                const authenticationData = {
+                    Username: email,
+                    Password: password
+                }
+                const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(
+                    authenticationData
+                );
+                const userData = {
+                    Username: email,
+                    Pool: userPool,
+                };
+                cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+                cognitoUser.authenticateUser(authenticationDetails, {
+                    onSuccess: function(result) {
+                        document.location.href = 'index.html'
+                    },
+
+                    onFailure: function(err) {
+                        console.log(err)
+                    },
+
+                    newPasswordRequired: function(userAttributes, requiredAttributes) {
+                        delete userAttributes.email_verified
+                        sessionUserAttributes = userAttributes
+
+                        changePasswordForm.style = 'display: block;'
+                    }
+                });
+            })
+
+            changePasswordForm.addEventListener('submit', function(e) {
+                e.preventDefault()
+
+                const newPassword = document.getElementById('new_password').value
+                console.log(new_password)
+                cognitoUser.completeNewPasswordChallenge(newPassword, sessionUserAttributes, {
+                    onSuccess: function(result) {
+                        document.location.href = 'index.html'
+                    },
+
+                    onFailure: function(err) {
+                        console.log(err)
+                    }
+                })
+            })
+        </script>
+    </body>
+</html>
